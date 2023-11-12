@@ -23,6 +23,12 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+#include <jtagServer.h>
+
+static bool done;
+
+const int JTAG_VPI_SERVER_PORT = 5555;
+const int JTAG_VPI_USE_ONLY_LOOPBACK = true;
 
 vluint64_t main_time = 0;
 
@@ -129,6 +135,17 @@ int main(int argc, char** argv) {
     std::uppercase << tb->mem_mailbox         << std::endl;
   std::cout << std::flush;
 
+  const char *arg_jtag = Verilated::commandArgsPlusMatch("jtag_vpi_enable=");
+  VerilatorJtagServer* jtag = NULL;
+  if (arg_jtag[1]) {
+    jtag = new VerilatorJtagServer(10); /* Jtag clock is 10 period */
+    if (jtag->init_jtag_server(JTAG_VPI_SERVER_PORT, JTAG_VPI_USE_ONLY_LOOPBACK) 
+		!= VerilatorJtagServer::SUCCESS) {
+      printf("Could not initialize jtag_vpi server. Ending simulation.\n");
+      exit(1);
+    }    
+  }
+
   // init trace dump
   VerilatedVcdC* tfp = NULL;
 
@@ -139,11 +156,43 @@ int main(int argc, char** argv) {
   tfp->open ("sim.vcd");
 #endif
   // Simulate
-  while(!Verilated::gotFinish()){
+
+  tb->core_clk = 1;
+  tb->rst = 1;
+
+  while(!(done || Verilated::gotFinish())){
+    if (main_time == 100) {
+      printf("Releasing reset\n");
+      tb->rst = 0;
+    }
+
+    if (main_time == 200) {
+      printf("Releasing jtag_trst_n\n");
+      tb->i_jtag_trst_n = true;
+    }
+
+    if (jtag && (main_time > 300)) {
+      int ret = jtag->doJTAG(main_time/20, 
+                             &tb->i_jtag_tms,
+                             &tb->i_jtag_tdi,
+                             &tb->i_jtag_tck,
+                             tb->o_jtag_tdo);
+      if (ret != VerilatorJtagServer::SUCCESS) {
+        if (ret == VerilatorJtagServer::CLIENT_DISCONNECTED) {
+          printf("Ending simulation. Reason: jtag_vpi client disconnected.\n");
+          done = true;
+        }
+        else {
+          printf("Ending simulation. Reason: jtag_vpi error encountered.\n");
+          done = true;
+        }
+      }
+    }
+
 #if VM_TRACE
       tfp->dump (main_time);
 #endif
-      main_time += 5;
+      main_time += 10;
       tb->core_clk = !tb->core_clk;
       tb->eval();
   }

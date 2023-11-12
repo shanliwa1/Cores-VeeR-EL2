@@ -17,7 +17,7 @@
 CONF_PARAMS = -set build_axi4
 
 TEST_CFLAGS = -g -O3 -funroll-all-loops
-ABI = -mabi=ilp32 -march=rv32imac
+ABI = -mabi=ilp32 -march=rv32imac_zicsr
 
 # Check for RV_ROOT
 ifeq (,$(wildcard ${RV_ROOT}/configs/veer.config))
@@ -96,7 +96,7 @@ includes = -I${BUILD_DIR}
 
 # CFLAGS for verilator generated Makefiles. Without -std=c++11 it
 # complains for `auto` variables
-CFLAGS += -std=c++11
+CFLAGS += "-std=c++20 -I${RV_ROOT}/testbench"
 
 # Optimization for better performance; alternative is nothing for
 # slower runtime (faster compiles) -O2 for faster runtime (slower
@@ -119,13 +119,15 @@ clean:
 ${BUILD_DIR}/defines.h:
 	BUILD_PATH=${BUILD_DIR} ${RV_ROOT}/configs/veer.config -target=$(target) $(CONF_PARAMS)
 
-verilator-build: ${TBFILES} ${BUILD_DIR}/defines.h test_tb_top.cpp
+verilator-build: ${TBFILES} ${BUILD_DIR}/defines.h test_tb_top.cpp jtagServer.cpp
 	echo '`undef RV_ASSERT_ON' >> ${BUILD_DIR}/common_defines.vh
-	$(VERILATOR)  --cc -CFLAGS ${CFLAGS} $(defines) \
+	$(VERILATOR)  --cc -CFLAGS ${CFLAGS}  $(defines) \
 	  $(includes) -I${RV_ROOT}/testbench -f ${RV_ROOT}/testbench/flist \
 	  -Wno-WIDTH -Wno-UNOPTFLAT -Wno-IMPLICITSTATIC ${TBFILES} --top-module tb_top \
-	  -exe test_tb_top.cpp --autoflush $(VERILATOR_DEBUG) $(VERILATOR_COVERAGE)
+	  -exe test_tb_top.cpp -exe jtagServer.cpp  -exe jtag_common.c --autoflush $(VERILATOR_DEBUG) $(VERILATOR_COVERAGE)
 	cp ${RV_ROOT}/testbench/test_tb_top.cpp obj_dir/
+	cp ${RV_ROOT}/testbench/jtagServer.cpp obj_dir/
+	cp ${RV_ROOT}/testbench/jtag_common.c obj_dir/
 	$(MAKE) -e -C obj_dir/ -f Vtb_top.mk $(VERILATOR_MAKE_FLAGS)
 	touch verilator-build
 

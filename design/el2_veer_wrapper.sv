@@ -683,6 +683,7 @@ import el2_pkg::*;
    logic                   dmi_reg_wr_en;
    logic [31:0]            dmi_reg_wdata;
    logic [31:0]            dmi_reg_rdata;
+   logic                   dmi_hard_reset;
 
    // Instantiate the el2_veer core
    el2_veer #(.pt(pt)) veer (
@@ -708,7 +709,7 @@ import el2_pkg::*;
     .tdo         (jtag_tdo),        // Test Data Output
     .tdoEnable   (),
     // Processor Signals
-    .core_rst_n  (dbg_rst_l),       // Debug reset, active low
+    .core_rst_n  (core_rst_l),       // Debug reset, active low
     .core_clk    (clk),             // Core clock
     .jtag_id     (jtag_id),         // JTAG ID
     .rd_data     (dmi_reg_rdata),   // Read data from  Processor
@@ -716,7 +717,7 @@ import el2_pkg::*;
     .reg_wr_addr (dmi_reg_addr),    // Write address to Processor
     .reg_en      (dmi_reg_en),      // Write interface bit to Processor
     .reg_wr_en   (dmi_reg_wr_en),   // Write enable to Processor
-    .dmi_hard_reset   ()
+    .dmi_hard_reset   (dmi_hard_reset)
    );
 
 `ifdef RV_ASSERT_ON

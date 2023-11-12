@@ -19,6 +19,12 @@ module tb_top;
 `else
 module tb_top (
     input bit                   core_clk,
+    input wire                  rst,
+    input wire                  i_jtag_tck,
+    input wire                  i_jtag_tms,
+    input wire                  i_jtag_tdi,
+    input wire                  i_jtag_trst_n,
+    output wire                 o_jtag_tdo,
     input bit [31:0]            mem_signature_begin,
     input bit [31:0]            mem_signature_end,
     input bit [31:0]            mem_mailbox
@@ -86,7 +92,7 @@ module tb_top (
     logic                       o_debug_mode_status;
 
 
-    logic                       jtag_tdo;
+    //logic                       jtag_tdo;
     logic                       o_cpu_halt_ack;
     logic                       o_cpu_halt_status;
     logic                       o_cpu_run_ack;
@@ -332,7 +338,7 @@ module tb_top (
     assign mailbox_data     = lmem.wdata;
     assign mailbox_data_val = mailbox_data[7:0] > 8'h5 && mailbox_data[7:0] < 8'h7f;
 
-    parameter MAX_CYCLES = 2_000_000;
+    parameter MAX_CYCLES = 2_000_000_0;
 
     integer fd, tp, el;
 
@@ -443,7 +449,7 @@ module tb_top (
         nmi_int   = 0;
 
         $readmemh("program.hex",  lmem.mem);
-        $readmemh("program.hex",  imem.mem);
+        //$readmemh("program.hex",  imem.mem); // the key is to disable this for openocd to connect.
         tp = $fopen("trace_port.csv","w");
         el = $fopen("exec.log","w");
         $fwrite (el, "//   Cycle : #inst    0    pc    opcode    reg=value    csr=value     ; mnemonic\n");
@@ -459,15 +465,18 @@ module tb_top (
     end
 
 
-    assign rst_l = cycleCnt > 5;
-    assign porst_l = cycleCnt > 2;
+    // assign rst_l = cycleCnt > 5;
+    // assign porst_l = cycleCnt > 2;
+
+    assign rst_l = !rst;
+    // assign porst_l = !rst;
 
    //=========================================================================-
    // RTL instance
    //=========================================================================-
 el2_veer_wrapper rvtop (
-    .rst_l                  ( rst_l         ),
-    .dbg_rst_l              ( porst_l       ),
+    .rst_l                  ( !rst      ),
+    .dbg_rst_l              ( !rst      ),
     .clk                    ( core_clk      ),
     .rst_vec                ( reset_vector[31:1]),
     .nmi_int                ( nmi_int       ),
@@ -734,11 +743,11 @@ el2_veer_wrapper rvtop (
     .trace_rv_i_interrupt_ip(trace_rv_i_interrupt_ip),
     .trace_rv_i_tval_ip     (trace_rv_i_tval_ip),
 
-    .jtag_tck               ( 1'b0  ),
-    .jtag_tms               ( 1'b0  ),
-    .jtag_tdi               ( 1'b0  ),
-    .jtag_trst_n            ( 1'b0  ),
-    .jtag_tdo               ( jtag_tdo ),
+    .jtag_tck               ( i_jtag_tck  ),
+    .jtag_tms               ( i_jtag_tms  ),
+    .jtag_tdi               ( i_jtag_tdi  ),
+    .jtag_trst_n            ( i_jtag_trst_n  ),
+    .jtag_tdo               ( o_jtag_tdo ),
 
     .mpc_debug_halt_ack     ( mpc_debug_halt_ack),
     .mpc_debug_halt_req     ( 1'b0),
