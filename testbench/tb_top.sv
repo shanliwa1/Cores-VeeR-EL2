@@ -87,6 +87,10 @@ module tb_top (
 
 
     logic                       jtag_tdo;
+    logic                       jtag_tck;
+    logic                       jtag_tms;
+    logic                       jtag_tdi;
+    logic                       jtag_trst_n;
     logic                       o_cpu_halt_ack;
     logic                       o_cpu_halt_status;
     logic                       o_cpu_run_ack;
@@ -443,7 +447,7 @@ module tb_top (
         nmi_int   = 0;
 
         $readmemh("program.hex",  lmem.mem);
-        $readmemh("program.hex",  imem.mem);
+        //$readmemh("program.hex",  imem.mem);
         tp = $fopen("trace_port.csv","w");
         el = $fopen("exec.log","w");
         $fwrite (el, "//   Cycle : #inst    0    pc    opcode    reg=value    csr=value     ; mnemonic\n");
@@ -465,6 +469,26 @@ module tb_top (
    //=========================================================================-
    // RTL instance
    //=========================================================================-
+
+SimJTAG #(.TICK_DELAY(5)) simjtag( .clock(core_clk),
+                                    .reset(!porst_l),
+                                    
+                                    .enable(1'd1),
+                                    .init_done(porst_l),
+                                    
+                                    .jtag_TCK(jtag_tck),
+                                    .jtag_TMS(jtag_tms),
+                                    .jtag_TDI(jtag_tdi),
+                                    .jtag_TRSTn(jtag_trst_n),
+                                    .srstn(),
+
+                                    .jtag_TDO_data(jtag_tdo),
+                                    .jtag_TDO_driven(),
+
+                                    .exit()
+                                    );
+
+
 el2_veer_wrapper rvtop (
     .rst_l                  ( rst_l         ),
     .dbg_rst_l              ( porst_l       ),
@@ -734,10 +758,10 @@ el2_veer_wrapper rvtop (
     .trace_rv_i_interrupt_ip(trace_rv_i_interrupt_ip),
     .trace_rv_i_tval_ip     (trace_rv_i_tval_ip),
 
-    .jtag_tck               ( 1'b0  ),
-    .jtag_tms               ( 1'b0  ),
-    .jtag_tdi               ( 1'b0  ),
-    .jtag_trst_n            ( 1'b0  ),
+    .jtag_tck               ( jtag_tck ),
+    .jtag_tms               ( jtag_tms ),
+    .jtag_tdi               ( jtag_tdi ),
+    .jtag_trst_n            ( jtag_trst_n ),
     .jtag_tdo               ( jtag_tdo ),
 
     .mpc_debug_halt_ack     ( mpc_debug_halt_ack),
@@ -778,25 +802,25 @@ el2_veer_wrapper rvtop (
    //=========================================================================-
 `ifdef RV_BUILD_AHB_LITE
 
-ahb_sif imem (
-     // Inputs
-     .HWDATA(64'h0),
-     .HCLK(core_clk),
-     .HSEL(1'b1),
-     .HPROT(ic_hprot),
-     .HWRITE(ic_hwrite),
-     .HTRANS(ic_htrans),
-     .HSIZE(ic_hsize),
-     .HREADY(ic_hready),
-     .HRESETn(rst_l),
-     .HADDR(ic_haddr),
-     .HBURST(ic_hburst),
+// ahb_sif imem (
+//      // Inputs
+//      .HWDATA(64'h0),
+//      .HCLK(core_clk),
+//      .HSEL(1'b1),
+//      .HPROT(ic_hprot),
+//      .HWRITE(ic_hwrite),
+//      .HTRANS(ic_htrans),
+//      .HSIZE(ic_hsize),
+//      .HREADY(ic_hready),
+//      .HRESETn(rst_l),
+//      .HADDR(ic_haddr),
+//      .HBURST(ic_hburst),
 
-     // Outputs
-     .HREADYOUT(ic_hready),
-     .HRESP(ic_hresp),
-     .HRDATA(ic_hrdata[63:0])
-);
+//      // Outputs
+//      .HREADYOUT(ic_hready),
+//      .HRESP(ic_hresp),
+//      .HRDATA(ic_hrdata[63:0])
+// );
 
 
 ahb_sif lmem (
@@ -821,42 +845,42 @@ ahb_sif lmem (
 
 `endif
 `ifdef RV_BUILD_AXI4
-axi_slv #(.TAGW(`RV_IFU_BUS_TAG)) imem(
-    .aclk(core_clk),
-    .rst_l(rst_l),
-    .arvalid(ifu_axi_arvalid),
-    .arready(ifu_axi_arready),
-    .araddr(ifu_axi_araddr),
-    .arid(ifu_axi_arid),
-    .arlen(ifu_axi_arlen),
-    .arburst(ifu_axi_arburst),
-    .arsize(ifu_axi_arsize),
+// axi_slv #(.TAGW(`RV_IFU_BUS_TAG)) imem(
+//     .aclk(core_clk),
+//     .rst_l(rst_l),
+//     .arvalid(ifu_axi_arvalid),
+//     .arready(ifu_axi_arready),
+//     .araddr(ifu_axi_araddr),
+//     .arid(ifu_axi_arid),
+//     .arlen(ifu_axi_arlen),
+//     .arburst(ifu_axi_arburst),
+//     .arsize(ifu_axi_arsize),
 
-    .rvalid(ifu_axi_rvalid),
-    .rready(ifu_axi_rready),
-    .rdata(ifu_axi_rdata),
-    .rresp(ifu_axi_rresp),
-    .rid(ifu_axi_rid),
-    .rlast(ifu_axi_rlast),
+//     .rvalid(ifu_axi_rvalid),
+//     .rready(ifu_axi_rready),
+//     .rdata(ifu_axi_rdata),
+//     .rresp(ifu_axi_rresp),
+//     .rid(ifu_axi_rid),
+//     .rlast(ifu_axi_rlast),
 
-    .awvalid(1'b0),
-    .awready(),
-    .awaddr('0),
-    .awid('0),
-    .awlen('0),
-    .awburst('0),
-    .awsize('0),
+//     .awvalid(1'b0),
+//     .awready(),
+//     .awaddr('0),
+//     .awid('0),
+//     .awlen('0),
+//     .awburst('0),
+//     .awsize('0),
 
-    .wdata('0),
-    .wstrb('0),
-    .wvalid(1'b0),
-    .wready(),
+//     .wdata('0),
+//     .wstrb('0),
+//     .wvalid(1'b0),
+//     .wready(),
 
-    .bvalid(),
-    .bready(1'b0),
-    .bresp(),
-    .bid()
-);
+//     .bvalid(),
+//     .bready(1'b0),
+//     .bresp(),
+//     .bid()
+// );
 
 defparam lmem.TAGW =`RV_LSU_BUS_TAG;
 
@@ -997,10 +1021,10 @@ addr += 4;
 eaddr = {lmem.mem[addr+3],lmem.mem[addr+2],lmem.mem[addr+1],lmem.mem[addr]};
 $display("ICCM pre-load from %h to %h", saddr, eaddr);
 
-for(addr= saddr; addr <= eaddr; addr+=4) begin
-    data = {imem.mem[addr+3],imem.mem[addr+2],imem.mem[addr+1],imem.mem[addr]};
-    slam_iccm_ram(addr, data == 0 ? 0 : {riscv_ecc32(data),data});
-end
+// for(addr= saddr; addr <= eaddr; addr+=4) begin
+//     data = {imem.mem[addr+3],imem.mem[addr+2],imem.mem[addr+1],imem.mem[addr]};
+//     slam_iccm_ram(addr, data == 0 ? 0 : {riscv_ecc32(data),data});
+// end
 
 endtask
 

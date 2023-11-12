@@ -23,8 +23,11 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+#include "remote_bitbang.h"
 
 vluint64_t main_time = 0;
+
+extern remote_bitbang_t* jtag;
 
 double sc_time_stamp () {
  return main_time;
@@ -71,6 +74,8 @@ int main(int argc, char** argv) {
   tb->mem_signature_begin = 0x00000000;
   tb->mem_signature_end   = 0x00000000;
   tb->mem_mailbox         = 0xD0580000;
+
+  jtag = new remote_bitbang_t(5555);
 
   std::map<std::string, uint64_t> symbols;
 
